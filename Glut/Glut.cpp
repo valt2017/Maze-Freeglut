@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 #include <GL/glut.h>
+#include <GL/freeglut.h>
 #include "math.h"
 
 // angle of rotation for the camera direction
@@ -11,18 +12,21 @@ float angle = 0.0f;
 // actual vector representing the camera's direction
 float lx = 0.5f, lz = -1.0f;
 // XZ position of the camera
-float x = 0.0f, z = 5.0f;
+float x = 0.0f, z = 5.0f, y = 1.0f;
 // the key states. These variables will be zero
 //when no key is being presses
 float deltaAngle = 0.0f;
 float deltaMove = 0;
+bool* keyStates = new bool[256]; // Create an array of boolean values of length 256 (0-255)  
 
+COORD Cur = { 0,0 };
+COORD End = { 0,0 };
 const char CURSOR = 'O';
-const char CIEL = 'C';
-const char STENA = '#';
-const char VOLNA = ' ';
+const char END = 'C';
+const char WALL = '#';
+const char FREE = ' ';
 int iX, iY;
-char ** Pole;
+char ** Array;
 
 void changeSize(int w, int h) {
 	// Prevent a divide by zero, when window is too short
@@ -63,32 +67,37 @@ void renderScene(void) {
 	// Reset transformations
 	glLoadIdentity();
 	// Set the camera
-	gluLookAt(x, 1.0f, z, x + lx, 1.0f, z + lz, 0.0f, 1.0f, 0.0f);
+	gluLookAt(x, y, z, x + lx, 1.0f, z + lz, 0.0f, 1.0f, 0.0f);
 	// Draw ground
-	glColor3f(0.9f, 0.9f, 0.9f);
-	glBegin(GL_QUADS);
-	glVertex3f(-100.0f, -5.0f, -100.0f);
-	glVertex3f(-100.0f, -5.0f, 100.0f);
-	glVertex3f(100.0f, -5.0f, 100.0f);
-	glVertex3f(100.0f, -5.0f, -100.0f);
-	glEnd();
+//	glColor3f(0.9f, 0.9f, 0.9f);
+//	glBegin(GL_QUADS);
+//	glVertex3f(-iX*10.0f, -5.0f, -100.0f);
+//	glVertex3f(-100.0f, -5.0f, 100.0f);
+//	glVertex3f(100.0f, -5.0f, 100.0f);
+//	glVertex3f(100.0f, -5.0f, -100.0f);
+//	glEnd();
 	// Draw Walls 
 	for (int j = 0; j < iY; j++)
 		for (int i = 0; i < iX; i++) {
 			glPushMatrix();
 			glTranslatef(i*10.0, 0, j*10.0);
-			if (Pole[j][i] == STENA) {
+			if (Array[j][i] == WALL) {
 				glColor3f(0.0f, 0.0f, 1.0f);
 				glTranslatef(0.0f, 0.75f, 0.0f);
 				glutWireCube(10.0f);
 			}
-			if (Pole[j][i] == CIEL) {
+			if (Array[j][i] == END) {
 				glColor3f(1.0f, 0.0f, 0.0f);
 				glTranslatef(0.0f, 0.75f, 0.0f);
 				glutSolidSphere(0.75f, 20, 20);
 			}
-			if (Pole[j][i] == CURSOR) {
+			if (Array[j][i] == CURSOR) {
 				glColor3f(0.0f, 1.0f, 0.0f);
+				glTranslatef(0.0f, 0.75f, 0.0f);
+				glutSolidSphere(0.75f, 20, 20);
+			}
+			if (Array[j][i] == FREE) {
+				glColor3f(0.0f, 0.0f, 1.0f);
 				glTranslatef(0.0f, 0.75f, 0.0f);
 				glutSolidSphere(0.75f, 20, 20);
 			}
@@ -97,12 +106,51 @@ void renderScene(void) {
 	glutSwapBuffers();
 }
 
+void keyPressed(unsigned char key, int x, int y) {
+	keyStates[key] = true; // Set the state of the current key to pressed
+	switch (key) {
+	case 'd':
+		if (Array[Cur.Y][Cur.X + 1] != WALL) {
+			Array[Cur.Y][Cur.X] = FREE;
+			Array[Cur.Y][++Cur.X] = CURSOR;
+		}
+		break;
+	case 'a':
+		if (Array[Cur.Y][Cur.X - 1] != WALL) {
+			Array[Cur.Y][Cur.X] = FREE;
+			Array[Cur.Y][--Cur.X] = CURSOR;
+		}
+		break;
+	case 'w':
+		if (Array[Cur.Y - 1][Cur.X] != WALL) {
+			Array[Cur.Y][Cur.X] = FREE;
+			Array[--Cur.Y][Cur.X] = CURSOR;
+		}
+		break;
+	case 's':
+		if (Array[Cur.Y + 1][Cur.X] != WALL) {
+			Array[Cur.Y][Cur.X] = FREE;
+			Array[++Cur.Y][Cur.X] = CURSOR;
+		}
+		break;
+	}
+	if (Cur.Y == End.Y && Cur.X == End.X)
+	{
+		glutLeaveMainLoop();
+	}
+}
+
+void keyUp(unsigned char key, int x, int y) {
+	keyStates[key] = false; // Set the state of the current key to not pressed  
+}
+
 void pressKey(int key, int xx, int yy) {
 	switch (key) {
-	case GLUT_KEY_LEFT: deltaAngle = -0.002f; break;
-	case GLUT_KEY_RIGHT: deltaAngle = 0.002f; break;
-	case GLUT_KEY_UP: deltaMove = 0.1f; break;
-	case GLUT_KEY_DOWN: deltaMove = -0.1f; break;
+		case GLUT_KEY_F1: if (y == 1.0f) y = 100.0f; else y = 1.0f;  break;
+		case GLUT_KEY_LEFT: deltaAngle = -0.002f; break;
+		case GLUT_KEY_RIGHT: deltaAngle = 0.002f; break;
+		case GLUT_KEY_UP: deltaMove = 0.1f; break;
+		case GLUT_KEY_DOWN: deltaMove = -0.1f; break;
 	}
 }
 
@@ -115,13 +163,13 @@ void releaseKey(int key, int x, int y) {
 	}
 }
 
-char ** NahrajPole(char * Subor, int * pX, int * pY){
+char ** LoadArray(char * File, int * pX, int * pY){
 	int i = 0, iRozX = 0, iRozY = 0;
 	char ** pIn;
-	std::ifstream pFin(Subor);
+	std::ifstream pFin(File);
 
 	if (!pFin){
-		std::cout << "Chyba pri otvarani suboru: " << Subor << std::endl;
+		std::cout << "File open error: " << File << std::endl;
 		exit(EXIT_FAILURE);
 	}
 	pFin >> iRozX >> iRozY;
@@ -131,14 +179,14 @@ char ** NahrajPole(char * Subor, int * pX, int * pY){
 	*pY = iRozY;
 	pIn = new char*[iRozY * sizeof(char*)];
 	if (pIn == NULL){
-		std::cout << "Maticu sa nepodarilo alokovat" << std::endl;
+		std::cout << "Matrix allocation error\n";
 		pFin.close();
 		return NULL;
 	}
 	for (i = 0; i < iRozY; i++)	{
 		pIn[i] = new char[(iRozX + 2) * sizeof(char)]; // '\n'+ '\0'
 		if (pIn[i] == NULL)	{
-			std::cout << "Maticu sa nepodarilo alokovat" << std::endl;
+			std::cout << "Matrix allocation error\n";
 			pFin.close();
 			return NULL;
 		}
@@ -149,11 +197,26 @@ char ** NahrajPole(char * Subor, int * pX, int * pY){
 	return pIn;
 }
 
-void UvolniPole(char ** pIn, int iRozY){
+void FreeArray(char ** pIn, int iRozY){
 	int i;
 	for (i = 0; i < iRozY; i++)
 		delete pIn[i];
 	delete pIn;
+}
+
+COORD Find(char ** pIn, int iX, int iY, char znak)
+{
+	int i, j;
+	COORD lokal = { 1,1 };
+	for (j = 0; j < iY; j++)
+		for (i = 0; i < iX; i++)
+			if (pIn[j][i] == znak)
+			{
+				lokal.X = i;
+				lokal.Y = j;
+				return lokal;
+			}
+	return lokal;
 }
 
 int main(int argc, char **argv) {
@@ -161,25 +224,28 @@ int main(int argc, char **argv) {
 		std::cout << "Error: level not found.\n";
 		exit(EXIT_FAILURE);
 	}
-	Pole = NahrajPole(argv[1], &iX, &iY);
+	Array = LoadArray(argv[1], &iX, &iY);
+	Cur = Find(Array, iX, iY, CURSOR);
+	End = Find(Array, iX, iY, END);
 	// init GLUT and create window
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(100, 100);
-	glutInitWindowSize(320, 320);
-	glutCreateWindow("Bludisko");
+	glutInitWindowSize(640, 480);
+	glutCreateWindow("Maze");
 	// register callbacks
 	glutDisplayFunc(renderScene);
 	glutReshapeFunc(changeSize);
 	glutIdleFunc(renderScene);
+	glutKeyboardFunc(keyPressed);   
 	glutSpecialFunc(pressKey);
-	// here are the new entries
 	glutIgnoreKeyRepeat(1);
 	glutSpecialUpFunc(releaseKey);
+	glutKeyboardUpFunc(keyUp);   
 	// OpenGL init
 	glEnable(GL_DEPTH_TEST);
 	// enter GLUT event processing cycle
 	glutMainLoop();
-	UvolniPole(Pole, iY);
+	FreeArray(Array, iY);
 	return EXIT_SUCCESS;
 }

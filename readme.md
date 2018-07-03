@@ -12,4 +12,7 @@ maze.exe level1.txt
 
 ## Help
 
-Movement with arrows, no collision detection yet...
+Camera movement with arrows,
+cursor movement with A,S,D,W,
+F1 perspective, 
+no collision detection yet...
